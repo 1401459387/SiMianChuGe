@@ -9,4 +9,5 @@ ServerMachine::ServerMachine(string _modelType, int _core, int _memoryCapacity, 
 	memoryCapacity = _memoryCapacity;
 	hardwareCost = _hardwareCost;
 	dailyCost = _dailyCost;
+	purchased_id = -1;
 }

@@ -2,13 +2,15 @@
 #include "VMObject.h"
 #include <unordered_map>
 
+class VMObject;
+
 //服务器当前某节点状态
 struct ServerState
 {
 	int core;
 	int memory;
-	ServerState() :core(0), memory(0) {}
-	ServerState(int _core, int _memory):core(_core), memory(_memory) {}
+	ServerState() : core(0), memory(0) {}
+	ServerState(int _core, int _memory) : core(_core), memory(_memory) {}
 };
 
 /// <summary>
@@ -19,11 +21,18 @@ struct ServerState
 /// 4.使用IsRunning判断服务器此时是否需要支付每日费用
 /// </summary>
 class SMObject
-{	
+{
+private:
+	ServerMachine SMProperty;
+	ServerState nodeA;
+	ServerState nodeB;
+	int Id;
+	unordered_map<int, VMObject *> childs;
+
 public:
 	friend class VMObject;
 
-	SMObject(ServerMachine _SMProperty, int _sm_id) :SMProperty(_SMProperty), SM_ID(_sm_id)
+	SMObject(ServerMachine _SMProperty) : SMProperty(_SMProperty)
 	{
 		int sumCore = SMProperty.GetCore();
 		int sumMemory = SMProperty.GetMemoryCapacity();
@@ -39,18 +48,19 @@ public:
 	//检查此服务器当前是否开着机（没有虚拟机的时候是不需要每日费用的）
 	bool IsRunning() const
 	{
-		return childs.empty();		//如果是空的说明没有虚拟机在运行
+		return childs.empty(); //如果是空的说明没有虚拟机在运行
 	}
 
-	int GetDailyCost() const
+	int GetDailyCost() const //获取每日消耗费用
 	{
 		return SMProperty.GetDailyCost();
 	}
 
 	//添加虚拟机并设置虚拟机的father为自己，如果虚拟机有父亲则其原父亲会删掉他
-	bool AddChild(VMObject* child)
+	bool AddChild(VMObject *child)
 	{
-		if (child == nullptr) throw exception("尝试往服务器中添加空指针");
+		if (child == nullptr)
+			return false;//throw exception("尝试往服务器中添加空指针");
 		VirtualMachine property = child->GetProperty();
 		bool isTwoNode = property.IsTwoNode();
 		int core = property.GetCore();
@@ -72,7 +82,8 @@ public:
 				nodeB.memory -= memory;
 				child->SetNodeType(Both);
 				childs[vm_id] = child;
-				if (child->father) child->father->RemoveChild(child);
+				if (child->father)
+					child->father->RemoveChild(child);
 				child->father = this;
 			}
 		}
@@ -84,7 +95,7 @@ public:
 			{
 				if (nodeB.core < core || nodeB.memory < memory)
 				{
-					throw exception("服务器塞不下此虚拟机");		//都塞不下
+					return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
 				}
 				else
 				{
@@ -92,7 +103,8 @@ public:
 					nodeB.memory -= memory;
 					child->SetNodeType(B);
 					childs[vm_id] = child;
-					if (child->father) child->father->RemoveChild(child);
+					if (child->father)
+						child->father->RemoveChild(child);
 					child->father = this;
 				}
 			}
@@ -102,17 +114,19 @@ public:
 				nodeA.memory -= memory;
 				child->SetNodeType(A);
 				childs[vm_id] = child;
-				if (child->father) child->father->RemoveChild(child);
+				if (child->father)
+					child->father->RemoveChild(child);
 				child->father = this;
 			}
 		}
 		return true;
 	}
 	//删除虚拟机（会导致虚拟机的father为空）
-	bool RemoveChild(VMObject* child)
+	bool RemoveChild(VMObject *child)
 	{
 		int vm_id = child->GetID();
-		if (childs.find(vm_id) == childs.end()) throw exception("服务器中并没有此虚拟机");
+		if (childs.find(vm_id) == childs.end())
+			return false; //throw exception("服务器中并没有此虚拟机");
 
 		VM_NodeType nodeType = child->GetNodeType();
 		VirtualMachine property = child->GetProperty();
@@ -137,26 +151,22 @@ public:
 			nodeB.memory += memory;
 			break;
 		default:
-			throw exception("要删除的虚拟机的节点属性未知");
+			return false; //throw exception("要删除的虚拟机的节点属性未知");
 			break;
 		}
-		childs.erase(vm_id);
+		this->childs.erase(vm_id);
 		return true;
 	}
 	//删除虚拟机（会导致虚拟机的father为空）
 	bool RemoveChild(int vm_id)
 	{
-		if (childs.find(vm_id) == childs.end()) throw exception("服务器中并没有此虚拟机");
-		VMObject* child = childs[vm_id];
+		if (this->childs.find(vm_id) == childs.end())
+			return false; //throw exception("服务器中并没有此虚拟机");
+		VMObject *child = this->childs[vm_id];
 
 		return RemoveChild(child);
 	}
 
-private:
-	ServerMachine SMProperty;
-	int SM_ID;
-	ServerState nodeA;
-	ServerState nodeB;
-
-	unordered_map<int, VMObject*> childs;
+	void SetId(int id) { this->Id = id; }
+	int GetId() const { return Id; }
 };
