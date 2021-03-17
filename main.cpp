@@ -22,7 +22,7 @@ vector<pair<int, VirtualMachine>> requestAddVM;
 //每日请求删除列表
 vector<int> requestDelVM;
 //当前维护着的服务器
-vector<SMObject> currentSM;
+vector<SMObject *> currentSM;
 //当前维护着的虚拟机
 vector<VMObject *> currentVM;
 //当日购买的服务器列表
@@ -108,13 +108,14 @@ int main()
         //添加请求的处理
         for (auto it = requestAddVM.begin(); it != requestAddVM.end(); it++) //遍历添加请求队列
         {
-            currentVM.push_back(&VMObject(it->second, it->first, NULL));
+            //currentVM.push_back(&VMObject(it->second, it->first, NULL));    <-笨比郭炅的写法
+            currentVM.push_back(new VMObject(it->second, it->first, nullptr));      //智慧的刘振宇的写法
             if (!currentSM.empty()) //若当前有服务器存在
             {
                 auto it1 = currentSM.begin();
                 for (; it1 != currentSM.end(); it1++)
                 {
-                    if (it1->AddChild(currentVM.back())) //检测到可用服务器直接将虚拟机添加至该服务器
+                    if ((*it1)->AddChild(currentVM.back())) //检测到可用服务器直接将虚拟机添加至该服务器
                         break;
                 }
                 if (it1 == currentSM.end()) //无可用空闲服务器
@@ -130,8 +131,8 @@ int main()
                     //只有当随机到的服务器足够容纳虚拟机才会真正申请
                     purchasedMachines.push_back(it2->second);
                     purchasedMachines.back().SetPurchased_id(currentSM.size());
-                    currentSM.push_back(SMObject(it2->second));
-                    currentVM.back()->SetFather(&currentSM.back());
+                    currentSM.push_back(new SMObject(it2->second));
+                    currentVM.back()->SetFather(currentSM.back());
                 }
             }
             else //若无服务器则申请新服务器
@@ -145,8 +146,8 @@ int main()
                         it2++;
                 } while ((it2->second.GetCore() < currentVM.back()->GetProperty().GetCore()) && (it2->second.GetMemoryCapacity() < currentVM.back()->GetProperty().GetMemoryCapacity()));
                 purchasedMachines.push_back(it2->second);
-                currentSM.push_back(SMObject(it2->second));
-                currentVM.back()->SetFather(&currentSM.back());
+                currentSM.push_back(new SMObject(it2->second));
+                currentVM.back()->SetFather(currentSM.back());
             }
         }
 
@@ -184,7 +185,7 @@ int main()
             if (purchasedMachines.size() != 0)
             {
                 cout << "(" << purchasedMachines[0].GetModelType() << ", 1)" << endl;
-                currentSM[purchasedMachines[0].GetPurchased_id()].SetId(server_id++); //按照题目要求设置服务器Id
+                currentSM[purchasedMachines[0].GetPurchased_id()]->SetId(server_id++); //按照题目要求设置服务器Id
             }
         }
         else //当天购买服务器数量大于1
@@ -201,7 +202,7 @@ int main()
                     sum = 1;
                     s = purchasedMachines[i].GetModelType();
                 }
-                currentSM[purchasedMachines[i].GetPurchased_id()].SetId(server_id++);
+                currentSM[purchasedMachines[i].GetPurchased_id()]->SetId(server_id++);
             }
             cout << "(" << s << ", " << sum << ")" << endl;
         }

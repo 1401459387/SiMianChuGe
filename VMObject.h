@@ -32,48 +32,24 @@ private:
 public:
 	friend class SMObject;
 	//构造函数（属性，VM号，宿主服务器）
-	VMObject(VirtualMachine _VMProperty, int _vm_id, SMObject *_father) : VMProperty(_VMProperty), VM_ID(_vm_id)
-	{
-		if (_father)
-		{
-			_father->AddChild(this);
-		}
-		father = _father;
-	}
+	VMObject(VirtualMachine _VMProperty, int _vm_id, SMObject* _father);
 
-	~VMObject()
-	{
-		if (father)
-			father->RemoveChild(this);
-	}
+	~VMObject();
+	
 
 	//初始化father，若已有father则会返回false
-	bool SetFather(SMObject *_father)
-	{
-		if (father)
-			return false; //已经有父亲了
-		return _father->AddChild(this);
-	}
+	bool SetFather(SMObject* _father);
+	
 
 	//修改寄存的服务器（会从原服务器里删除自己（如果有原服务器的话））
-	bool ChangeFather(SMObject *_newfather)
-	{
-		if (father)
-			father->RemoveChild(this);
-		return _newfather->AddChild(this);
-	}
+	bool ChangeFather(SMObject* _newfather);
 
 	//从原服务器中离开
-	bool LeaveFather()
-	{
-		if (!father)
-			return false; //本来就是孤儿
-		return father->RemoveChild(this);
-	}
+	bool LeaveFather();
 
 	VM_NodeType GetNodeType() const { return nodeType; } //获取节点类型
 	void SetNodeType(VM_NodeType _nodeType) { nodeType = _nodeType; }
 	VirtualMachine GetProperty() const { return VMProperty; } //获取属性
 	int GetID() const { return VM_ID; }						  //获取VM_ID
-	int GetFatherID() const { return father->Id; }
+	int GetFatherID() const;
 };
