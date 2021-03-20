@@ -1,6 +1,6 @@
 #include "SMObject.h"
 
-SMObject::SMObject(ServerMachine _SMProperty,int _sm_id) : SMProperty(_SMProperty)
+SMObject::SMObject(const ServerMachine& _SMProperty,int _sm_id) : SMProperty(_SMProperty)
 {
 	int sumCore = SMProperty.GetCore();
 	int sumMemory = SMProperty.GetMemoryCapacity();
@@ -25,15 +25,15 @@ bool SMObject::AddChild(VMObject* child)
 {
 	if (child == nullptr)
 		return false;//throw exception("尝试往服务器中添加空指针");
-	VirtualMachine property = child->GetProperty();
-	bool isTwoNode = property.IsTwoNode();
+	const VirtualMachine& property = child->GetProperty();
 	int core = property.GetCore();
 	int memory = property.GetMemoryCapacity();
 	int vm_id = child->GetID();
-	if (isTwoNode)
+	if (property.IsTwoNode())
 	{
 		core >>= 1;
 		memory >>= 1;
+
 		if (nodeA.core < core || nodeA.memory < memory || nodeB.core < core || nodeB.memory < memory)
 		{
 			return false;
@@ -93,7 +93,7 @@ bool SMObject::RemoveChild(VMObject* child)
 		return false; //throw exception("服务器中并没有此虚拟机");
 
 	VM_NodeType nodeType = child->GetNodeType();
-	VirtualMachine property = child->GetProperty();
+	const VirtualMachine& property = child->GetProperty();
 	int core = property.GetCore();
 	int memory = property.GetMemoryCapacity();
 	switch (nodeType)

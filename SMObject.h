@@ -25,7 +25,7 @@ struct ServerState
 class SMObject
 {
 private:
-	ServerMachine SMProperty;
+	const ServerMachine& SMProperty;
 	ServerState nodeA;
 	ServerState nodeB;
 	int SM_Id;
@@ -34,7 +34,7 @@ private:
 public:
 	friend class VMObject;
 
-	SMObject(ServerMachine _SMProperty,int _sm_id);
+	SMObject(const ServerMachine& _SMProperty,int _sm_id);
 
 	//并不需要析构函数，因为服务器不会被销毁
 	//~SMObject() {}

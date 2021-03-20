@@ -24,7 +24,7 @@ enum class VM_NodeType
 class VMObject
 {
 private:
-	VirtualMachine VMProperty; //属性
+	const VirtualMachine& VMProperty; //属性
 	int VM_ID;				   //虚拟机ID
 	VM_NodeType nodeType;	   //虚拟机节点类型
 	SMObject* father;		   //所寄存的服务器
@@ -32,7 +32,7 @@ private:
 public:
 	friend class SMObject;
 	//构造函数（属性，VM号，宿主服务器）
-	VMObject(VirtualMachine _VMProperty, int _vm_id, SMObject* _father);
+	VMObject(const VirtualMachine& _VMProperty, int _vm_id, SMObject* _father);
 
 	~VMObject();
 	
@@ -49,7 +49,7 @@ public:
 
 	VM_NodeType GetNodeType() const { return nodeType; } //获取节点类型
 	void SetNodeType(VM_NodeType _nodeType) { nodeType = _nodeType; }
-	VirtualMachine GetProperty() const { return VMProperty; } //获取属性
+	const VirtualMachine& GetProperty() const { return VMProperty; } //获取属性
 	int GetID() const { return VM_ID; }						  //获取VM_ID
 	int GetFatherID() const;
 };
