@@ -1,53 +1,60 @@
-ï»¿#include <iostream>
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
 #include "ServerMachine.h"
 #include "VirtualMachine.h"
 #include "SMObject.h"
 #include "VMObject.h"
-#include <string>
-#include <map>
-#include <unordered_map>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <vector>
-#include <time.h>
+#include <windows.h>
+#include <ctime>
+
 using namespace std;
 
-//æœåŠ¡å™¨è¡¨
+//·şÎñÆ÷ÀàĞÍ±í
 unordered_map<string, ServerMachine> serverMachines;
-//è™šæ‹Ÿæœºè¡¨
+//ĞéÄâ»úÀàĞÍ±í
 unordered_map<string, VirtualMachine> virtualMachines;
-//æ¯æ—¥è¯·æ±‚æ·»åŠ åˆ—è¡¨
-vector<pair<int, VirtualMachine>> requestAddVM;
-//æ¯æ—¥è¯·æ±‚åˆ é™¤åˆ—è¡¨
-vector<int> requestDelVM;
-//å½“å‰ç»´æŠ¤ç€çš„æœåŠ¡å™¨
-vector<SMObject *> currentSM;
-//å½“å‰ç»´æŠ¤ç€çš„è™šæ‹Ÿæœº
-vector<VMObject *> currentVM;
-//å½“æ—¥è´­ä¹°çš„æœåŠ¡å™¨åˆ—è¡¨
-vector<ServerMachine> purchasedMachines;
-//æœåŠ¡å™¨id
-int server_id = 0;
+//µ±Ç°¹ºÂòÁËµÄ·şÎñÆ÷±í
+unordered_map<int, SMObject*> currentSM;
+//µ±Ç°ÅäÖÃÁËµÄĞéÄâ»ú±í
+unordered_map<int, VMObject*> currentVM;
+//µ±Ç°µÄÇëÇó¶ÓÁĞ
+map<int, string> requestList;
 
-int rd() //ç”Ÿæˆéšæœºæ•°å‡½æ•°
+//Ã¿ÈÕ¹ºÂòÁĞ±í
+map<string, int> dailyPurchase;
+//Ã¿ÈÕÇ¨ÒÆÁĞ±í
+vector<tuple<int, int, VM_NodeType> > dailyMigration;
+//Ã¿ÈÕ´´½¨ÁĞ±í
+vector<pair<int, VM_NodeType> > dailyCreation;
+
+//µ±Ç°µÄ·şÎñÆ÷IDºÅµÄ×î´óÖµ
+int max_sm_id = 0;
+
+int rd() //Éú³ÉËæ»úÊıº¯Êı
 {
-    srand(time(0));
+    //srand(time(0));
+    srand(GetTickCount64());
     return rand() % serverMachines.size();
 }
 
-int main()
+void InitInput(ifstream* ifs)
 {
-    ifstream ifs("training-1.txt");
-    int N; //æœåŠ¡å™¨æ•°é‡
-    ifs >> N;
-    ifs.get();
+    int N; //·şÎñÆ÷ÊıÁ¿
+    *ifs >> N;
+    ifs->get();
     string catcher;
-    string _model; //å‹å·
+    string _model; //ĞÍºÅ
     int _core, _mCp, _hC, _dC;
     for (int i = 0; i < N; ++i)
     {
-        getline(ifs, catcher);
+        getline(*ifs, catcher);
 
         int len = catcher.length();
         catcher = catcher.substr(1, len - 2);
@@ -58,12 +65,12 @@ int main()
         serverMachines[_model] = ServerMachine(_model, _core, _mCp, _hC, _dC);
     }
 
-    ifs >> N; //è™šæ‹Ÿæœºæ•°é‡
-    ifs.get();
+    *ifs >> N; //ĞéÄâ»úÊıÁ¿
+    ifs->get();
     bool _tN;
     for (int i = 0; i < N; ++i)
     {
-        getline(ifs, catcher);
+        getline(*ifs, catcher);
         int len = catcher.length();
         catcher = catcher.substr(1, len - 2);
         replace(catcher.begin(), catcher.end(), ',', ' ');
@@ -72,161 +79,207 @@ int main()
         stm >> _core >> _mCp >> _tN;
         virtualMachines[_model] = VirtualMachine(_model, _core, _mCp, _tN);
     }
+}
 
-    int T; //T-å¤šå°‘å¤©
-    int R; //R-æ¯å¤©æœ‰å¤šå°‘è¯·æ±‚
+//¾ö¶¨Îªµ±Ç°µÄĞéÄâ»ú¹ºÂòÄÄÒ»¿î·şÎñÆ÷
+ServerMachine& ChooseServer(const VirtualMachine& vm_property)
+{
+    int vm_core = vm_property.GetCore();
+    int vm_memory = vm_property.GetMemoryCapacity();
 
+    if (!vm_property.IsTwoNode())
+    {
+        vm_core <<= 1;
+        vm_memory <<= 1;
+    }
+
+    while (true)
+    {
+        int _rand = rd();
+        auto iter = serverMachines.begin();
+        while (--_rand && iter != serverMachines.end()) ++iter;
+        if (iter == serverMachines.end()) iter = serverMachines.begin();
+        ServerMachine& serverMachine = iter->second;
+        int sm_core = serverMachine.GetCore();
+        int sm_memory = serverMachine.GetMemoryCapacity();
+        if (vm_core <= sm_core && vm_memory <= sm_memory) return serverMachine;
+    }
+    /*auto iter = serverMachines.begin();
+    for (; iter != serverMachines.end(); ++iter)
+    {
+        ServerMachine& serverMachine = iter->second;
+        int sm_core = serverMachine.GetCore();
+        int sm_memory = serverMachine.GetMemoryCapacity();
+        if (vm_core <= sm_core && vm_memory <= sm_memory) return serverMachine;
+    }
+    if (iter == serverMachines.end()) throw new exception("No server match!");*/
+}
+
+char GetStringFromNodeType(const VM_NodeType& nodeType)
+{
+    switch (nodeType)
+    {
+    case VM_NodeType::A:
+        return 'A';
+    case VM_NodeType::B:
+        return 'B';
+    default:
+        return ' ';
+    }
+}
+
+void DailyOutput()
+{
+    int Q = dailyPurchase.size();
+    printf("(purchase,%d)\n", Q);
+    for (auto iter = dailyPurchase.begin(); iter != dailyPurchase.end(); ++iter)
+    {
+        printf("(%s,%d)\n", iter->first.c_str(), iter->second);
+    }
+    int W = dailyMigration.size();
+    printf("(migration,%d)\n", W);
+    for (auto iter = dailyMigration.begin(); iter != dailyMigration.end(); ++iter)
+    {
+        int vm_id = get<0>(*iter);
+        int sm_id = get<1>(*iter);
+        VM_NodeType& nodeType = get<2>(*iter);
+        if (nodeType == VM_NodeType::Both)
+        {
+            printf("(%d,%d)\n", vm_id, sm_id);
+        }
+        else
+        {
+            char s_nodeType = GetStringFromNodeType(nodeType);
+            printf("(%d,%d,%c)\n", vm_id, sm_id, s_nodeType);
+        }
+    }
+
+    for (auto iter = dailyCreation.begin(); iter != dailyCreation.end(); ++iter)
+    {
+        int sm_id = iter->first;
+        VM_NodeType& nodeType = iter->second;
+        if (nodeType == VM_NodeType::Both)
+        {
+            printf("(%d)\n",sm_id);
+        }
+        else
+        {
+            char s_nodeType = GetStringFromNodeType(nodeType);
+            printf("(%d,%c)\n", sm_id, s_nodeType);
+        }
+    }
+}
+
+void DailyClear()
+{
+    requestList.clear();
+    dailyPurchase.clear();
+    dailyMigration.clear();
+    dailyCreation.clear();
+}
+
+int main()
+{
+    clock_t start = clock();
+
+    ifstream* ifs = new ifstream("training-1.txt");
+    InitInput(ifs);
+
+    int T;              //ÌìÊı
+    int R;              //Ã¿ÌìµÄÇëÇóÊı
+
+    string catcher;
+    string _model;
     string _opType;
     int _VM_id;
 
-    ifs >> T;
-    while (T--) //è¯·æ±‚æ¥æ”¶
+    *ifs >> T;
+    while (T--)
     {
-        ifs >> R;
-        ifs.get();
+        *ifs >> R;
+        ifs->get();
+        //»ñÈ¡µ±ÈÕµÄ´´½¨ÉêÇë
         for (int i = 0; i < R; ++i)
         {
-            getline(ifs, catcher);
+            getline(*ifs, catcher);
             int len = catcher.length();
             catcher = catcher.substr(1, len - 2);
             replace(catcher.begin(), catcher.end(), ',', ' ');
             stringstream stm(catcher);
             stm >> _opType;
-            if (_opType == "add") //æ·»åŠ è¯·æ±‚æ”¾å…¥æ·»åŠ è¯·æ±‚é˜Ÿåˆ—
+            if (_opType == "add") 
             {
                 stm >> _model >> _VM_id;
-
-                requestAddVM.push_back(pair<int, VirtualMachine>(_VM_id, virtualMachines[_model]));
+                //´´½¨Ò»Ì¨ĞéÄâ»ú
+                requestList[_VM_id] = _model;
             }
-            else //del   åˆ é™¤è¯·æ±‚æ”¾å…¥åˆ é™¤è¯·æ±‚é˜Ÿåˆ—
+            else //del   
             {
                 stm >> _VM_id;
-                requestDelVM.push_back(_VM_id);
-            }
-        }
-
-        //æ·»åŠ è¯·æ±‚çš„å¤„ç†
-        for (auto it = requestAddVM.begin(); it != requestAddVM.end(); it++) //éå†æ·»åŠ è¯·æ±‚é˜Ÿåˆ—
-        {
-            //currentVM.push_back(&VMObject(it->second, it->first, NULL));    <-ç¬¨æ¯”éƒ­ç‚…çš„å†™æ³•
-            currentVM.push_back(new VMObject(it->second, it->first, nullptr));      //æ™ºæ…§çš„åˆ˜æŒ¯å®‡çš„å†™æ³•
-            if (!currentSM.empty()) //è‹¥å½“å‰æœ‰æœåŠ¡å™¨å­˜åœ¨
-            {
-                auto it1 = currentSM.begin();
-                for (; it1 != currentSM.end(); it1++)
+                //É¾³ıÒ»Ì¨ĞéÄâ»ú
+                if (requestList.find(_VM_id) != requestList.end())
                 {
-                    if ((*it1)->AddChild(currentVM.back())) //æ£€æµ‹åˆ°å¯ç”¨æœåŠ¡å™¨ç›´æ¥å°†è™šæ‹Ÿæœºæ·»åŠ è‡³è¯¥æœåŠ¡å™¨
-                        break;
+                    requestList.erase(_VM_id);
                 }
-                if (it1 == currentSM.end()) //æ— å¯ç”¨ç©ºé—²æœåŠ¡å™¨
-                {
-                    auto it2 = serverMachines.begin();
-                    do
-                    {
-                        it2 = serverMachines.begin();
-                        int lim = rd(); //æœåŠ¡å™¨ç”³è¯·é‡‡ç”¨éšæœºç”³è¯·
-                        for (int i = 0; i < lim; i++)
-                            it2++;
-                    } while ((it2->second.GetCore() < currentVM.back()->GetProperty().GetCore()) && (it2->second.GetMemoryCapacity() < currentVM.back()->GetProperty().GetMemoryCapacity()));
-                    //åªæœ‰å½“éšæœºåˆ°çš„æœåŠ¡å™¨è¶³å¤Ÿå®¹çº³è™šæ‹Ÿæœºæ‰ä¼šçœŸæ­£ç”³è¯·
-                    purchasedMachines.push_back(it2->second);
-                    purchasedMachines.back().SetPurchased_id(currentSM.size());
-                    currentSM.push_back(new SMObject(it2->second));
-                    currentVM.back()->SetFather(currentSM.back());
-                }
-            }
-            else //è‹¥æ— æœåŠ¡å™¨åˆ™ç”³è¯·æ–°æœåŠ¡å™¨
-            {
-                auto it2 = serverMachines.begin();
-                do
-                {
-                    it2 = serverMachines.begin();
-                    int lim = rd();
-                    for (int i = 0; i < lim; i++)
-                        it2++;
-                } while ((it2->second.GetCore() < currentVM.back()->GetProperty().GetCore()) && (it2->second.GetMemoryCapacity() < currentVM.back()->GetProperty().GetMemoryCapacity()));
-                purchasedMachines.push_back(it2->second);
-                currentSM.push_back(new SMObject(it2->second));
-                currentVM.back()->SetFather(currentSM.back());
-            }
-        }
-
-        //å¯¹åˆ é™¤è¯·æ±‚çš„å¤„ç†
-        for (auto it = requestDelVM.begin(); it != requestDelVM.end(); it++)
-        {
-            for (auto it1 = currentVM.begin(); it1 != currentVM.end(); it1++)
-            {
-                if ((*it1)->GetID() == (*it))
-                {
-                    (*it1)->LeaveFather();
-                    currentVM.erase(it1);
-                }
-            }
-        }
-
-        //è®¡ç®—æ‰€è´­ä¹°çš„æœåŠ¡å™¨ç§ç±»
-        map<string, bool> cal_aid;
-        int Q = 0;
-        auto it1 = cal_aid.begin();
-        for (auto it = purchasedMachines.begin(); it != purchasedMachines.end(); it++)
-        {
-            if (cal_aid.find(it->GetModelType()) == cal_aid.end())
-            {
-                cal_aid.insert(pair<string, bool>(it->GetModelType(), true));
-                Q++;
-            }
-        }
-        cout << "(purchase, " << Q << ")" << endl;
-
-        //è¾“å‡ºå·²è´­ä¹°æœåŠ¡å™¨åˆ—è¡¨
-        sort(purchasedMachines.begin(), purchasedMachines.end()); //å…ˆæŒ‰æœåŠ¡å™¨å‹å·å¯¹è´­ä¹°çš„æœåŠ¡å™¨è¿›è¡Œæ’åº
-        if (purchasedMachines.size() <= 1)                        //æ ¹æ®å½“å¤©è´­ä¹°æœåŠ¡å™¨æ•°é‡åšå‡ºä¸åŒæŠ‰æ‹©
-        {
-            if (purchasedMachines.size() != 0)
-            {
-                cout << "(" << purchasedMachines[0].GetModelType() << ", 1)" << endl;
-                currentSM[purchasedMachines[0].GetPurchased_id()]->SetId(server_id++); //æŒ‰ç…§é¢˜ç›®è¦æ±‚è®¾ç½®æœåŠ¡å™¨Id
-            }
-        }
-        else //å½“å¤©è´­ä¹°æœåŠ¡å™¨æ•°é‡å¤§äº1
-        {
-            string s = purchasedMachines[0].GetModelType();
-            int sum = 1;
-            for (int i = 1; i < purchasedMachines.size(); i++)
-            {
-                if (purchasedMachines[i].GetModelType() == s)
-                    sum++;
                 else
                 {
-                    cout << "(" << s << ", " << sum << ")" << endl;
-                    sum = 1;
-                    s = purchasedMachines[i].GetModelType();
+                    //ÊÇ´ÓÒÔÇ°µÄÀïÃæÉ¾³ı
+                    if (currentVM.find(_VM_id) != currentVM.end())
+                    {
+                        currentVM[_VM_id]->LeaveFather();
+
+                        currentVM.erase(_VM_id);
+                    }
                 }
-                currentSM[purchasedMachines[i].GetPurchased_id()]->SetId(server_id++);
             }
-            cout << "(" << s << ", " << sum << ")" << endl;
         }
-
-        int W = 0; //Wä¸ºè¿ç§»æ¬¡æ•°
-        cout << "(migration, " << W << ")" << endl;
-
-        //è¾“å‡ºè™šæ‹ŸæœºçŠ¶æ€
-        for (auto it = requestAddVM.begin(); it != requestAddVM.end(); it++)
+        //TODO ³¢ÊÔÇ¨ÒÆ
+        //ÎªÇëÇó¶ÓÁĞÑ°ÕÒÄ¿±ê·şÎñÆ÷
+        for (auto iter = requestList.begin(); iter != requestList.end(); ++iter)
         {
-            int i;
-            for (i = 0; i < currentVM.size(); i++)
-                if (currentVM[i]->GetID() == it->first)
+            VirtualMachine& vm_property = virtualMachines[iter->second];
+            VMObject* vmObject = new VMObject(vm_property, iter->first, nullptr);
+            currentVM[iter->first] = vmObject;
+
+            auto iter2 = currentSM.begin();
+            for (; iter2 != currentSM.end(); ++iter2)
+            {
+                if (iter2->second->AddChild(vmObject))
+                {
+                    //ÕÒµ½ÁË¿ÉÒÔÈûµÄÏÂµÄ·şÎñÆ÷
+                    dailyCreation.push_back(make_pair(iter2->first, vmObject->GetNodeType()));
                     break;
-            if (it->second.IsTwoNode())
-                cout << "(" << currentVM[i]->GetFatherID() << ")" << endl;
-            else
-                cout << "(" << currentVM[i]->GetFatherID() << ", " << currentVM[i]->GetNodeType() << ")" << endl;
+                }
+            }
+            //ÕÒ²»µ½¿ÉÒÔÈûµÄÏÂµÄ·şÎñÆ÷
+            if (iter2 == currentSM.end())
+            {
+                ServerMachine& sm_property = ChooseServer(vm_property);
+                SMObject* smObject = new SMObject(sm_property, max_sm_id);
+                smObject->AddChild(vmObject);
+                dailyCreation.push_back(make_pair(max_sm_id, vmObject->GetNodeType()));
+
+                currentSM[max_sm_id] = smObject;
+                if (dailyPurchase.find(sm_property.GetModelType()) != dailyPurchase.end())
+                {
+                    ++dailyPurchase[sm_property.GetModelType()];
+                }
+                else
+                {
+                    dailyPurchase[sm_property.GetModelType()] = 1;
+                }
+
+                ++max_sm_id;
+            }
         }
 
-        requestAddVM.clear();
-        requestDelVM.clear();
-        purchasedMachines.clear();
-        //æ¯å¤©ç»“æŸåæ¸…ç©ºè¯·æ±‚åˆ—è¡¨
+        //Êä³ö
+        DailyOutput();
+
+        //ÇåÀíÀ¬»ø
+        DailyClear();
     }
-    return 0;
+
+    //clock_t finish = clock();
+    //cout << (finish - start) / 1000 << "s" << endl;
 }

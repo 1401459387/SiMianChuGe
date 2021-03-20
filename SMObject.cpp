@@ -1,6 +1,6 @@
 #include "SMObject.h"
 
-SMObject::SMObject(ServerMachine _SMProperty) : SMProperty(_SMProperty)
+SMObject::SMObject(ServerMachine _SMProperty,int _sm_id) : SMProperty(_SMProperty)
 {
 	int sumCore = SMProperty.GetCore();
 	int sumMemory = SMProperty.GetMemoryCapacity();
@@ -8,6 +8,7 @@ SMObject::SMObject(ServerMachine _SMProperty) : SMProperty(_SMProperty)
 	nodeA.memory = sumMemory >> 1;
 	nodeB.core = nodeA.core;
 	nodeB.memory = nodeA.memory;
+	SM_Id = _sm_id;
 }
 
 bool SMObject::IsRunning() const
@@ -43,7 +44,7 @@ bool SMObject::AddChild(VMObject* child)
 			nodeB.core -= core;
 			nodeA.memory -= memory;
 			nodeB.memory -= memory;
-			child->SetNodeType(Both);
+			child->SetNodeType(VM_NodeType::Both);
 			childs[vm_id] = child;
 			if (child->father)
 				child->father->RemoveChild(child);
@@ -64,7 +65,7 @@ bool SMObject::AddChild(VMObject* child)
 			{
 				nodeB.core -= core;
 				nodeB.memory -= memory;
-				child->SetNodeType(B);
+				child->SetNodeType(VM_NodeType::B);
 				childs[vm_id] = child;
 				if (child->father)
 					child->father->RemoveChild(child);
@@ -75,7 +76,7 @@ bool SMObject::AddChild(VMObject* child)
 		{
 			nodeA.core -= core;
 			nodeA.memory -= memory;
-			child->SetNodeType(A);
+			child->SetNodeType(VM_NodeType::A);
 			childs[vm_id] = child;
 			if (child->father)
 				child->father->RemoveChild(child);
@@ -97,15 +98,15 @@ bool SMObject::RemoveChild(VMObject* child)
 	int memory = property.GetMemoryCapacity();
 	switch (nodeType)
 	{
-	case A:
+	case VM_NodeType::A:
 		nodeA.core += core;
 		nodeA.memory += memory;
 		break;
-	case B:
+	case VM_NodeType::B:
 		nodeB.core += core;
 		nodeB.memory += memory;
 		break;
-	case Both:
+	case VM_NodeType::Both:
 		core >>= 1;
 		memory >>= 1;
 		nodeA.core += core;

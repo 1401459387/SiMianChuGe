@@ -28,13 +28,13 @@ private:
 	ServerMachine SMProperty;
 	ServerState nodeA;
 	ServerState nodeB;
-	int Id;
+	int SM_Id;
 	unordered_map<int, VMObject *> childs;
 
 public:
 	friend class VMObject;
 
-	SMObject(ServerMachine _SMProperty);
+	SMObject(ServerMachine _SMProperty,int _sm_id);
 
 	//并不需要析构函数，因为服务器不会被销毁
 	//~SMObject() {}
@@ -53,6 +53,6 @@ public:
 	//删除虚拟机（会导致虚拟机的father为空）
 	bool RemoveChild(int vm_id);
 
-	void SetId(int id) { this->Id = id; }
-	int GetId() const { return Id; }
+	void SetId(int id) { this->SM_Id = id; }
+	int GetId() const { return SM_Id; }
 };

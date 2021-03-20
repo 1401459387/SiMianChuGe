@@ -7,7 +7,7 @@
 class SMObject;
 
 //虚拟机节点类型枚举
-enum VM_NodeType
+enum class VM_NodeType
 {
 	Unknow,
 	A,

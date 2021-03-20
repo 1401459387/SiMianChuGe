@@ -1,7 +1,7 @@
 #include "VMObject.h"
 
 int VMObject::GetFatherID() const 
-{ return father->Id; }
+{ return father->SM_Id; }
 
 
 VMObject::VMObject(VirtualMachine _VMProperty, int _vm_id, SMObject* _father) : VMProperty(_VMProperty), VM_ID(_vm_id)
@@ -11,6 +11,7 @@ VMObject::VMObject(VirtualMachine _VMProperty, int _vm_id, SMObject* _father) : 
 		_father->AddChild(this);
 	}
 	father = _father;
+	nodeType = VM_NodeType::Unknow;
 }
 
 VMObject::~VMObject()
