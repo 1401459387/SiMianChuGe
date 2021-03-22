@@ -37,10 +37,12 @@ map<string, int> dailyPurchase;
 //每日迁移列表
 vector<tuple<int, int, VM_NodeType> > dailyMigration;
 //每日创建列表
-vector<pair<int, VM_NodeType> > dailyCreation;
+vector<pair<int, VMObject*> > dailyCreation;
 
 //当前的服务器ID号的最大值
 int max_sm_id = 0;
+
+int id = 0;
 
 int rd() //生成随机数函数
 {
@@ -185,6 +187,13 @@ void DailyOutput()
     for (auto iter = dailyPurchase.begin(); iter != dailyPurchase.end(); ++iter)
     {
         printf("(%s,%d)\n", iter->first.c_str(), iter->second);
+        for (auto it = currentSM.begin(); it != currentSM.end(); it++)
+        {
+            if (it->second->Gettype() == iter->first.c_str()&&it->second->GetTrueId()==-1)
+            {
+                it->second->SetTrueId(id++);
+            }
+        }
     }
     int W = dailyMigration.size();
     printf("(migration,%d)\n", W);
@@ -206,8 +215,8 @@ void DailyOutput()
 
     for (auto iter = dailyCreation.begin(); iter != dailyCreation.end(); ++iter)
     {
-        int sm_id = iter->first;
-        VM_NodeType& nodeType = iter->second;
+        int sm_id = iter->second->GetFatherID();
+        VM_NodeType nodeType = iter->second->GetNodeType();
         if (nodeType == VM_NodeType::Both)
         {
             printf("(%d)\n",sm_id);
@@ -291,7 +300,7 @@ int main()
                     if (iter2->second->AddChild(vmObject))
                     {
                         //找到了可以塞的下的服务器
-                        dailyCreation.push_back(make_pair(iter2->first, vmObject->GetNodeType()));
+                        dailyCreation.push_back(make_pair(iter2->first, vmObject));
                         break;
                     }
                 }
@@ -301,7 +310,7 @@ int main()
                     ServerMachine& sm_property = ChooseServer(vm_property);
                     SMObject* smObject = new SMObject(sm_property, max_sm_id);
                     smObject->AddChild(vmObject);
-                    dailyCreation.push_back(make_pair(max_sm_id, vmObject->GetNodeType()));
+                    dailyCreation.push_back(make_pair(max_sm_id, vmObject));
 
                     currentSM[max_sm_id] = smObject;
                     if (dailyPurchase.find(sm_property.GetModelType()) != dailyPurchase.end())
@@ -319,7 +328,7 @@ int main()
         }
 
         //输出
-        //DailyOutput();
+        DailyOutput();
 
         //清理垃圾
         DailyClear();

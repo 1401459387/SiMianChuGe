@@ -9,6 +9,7 @@ SMObject::SMObject(const ServerMachine& _SMProperty,int _sm_id) : SMProperty(_SM
 	nodeB.core = nodeA.core;
 	nodeB.memory = nodeA.memory;
 	SM_Id = _sm_id;
+	true_id = -1;
 }
 
 bool SMObject::IsRunning() const

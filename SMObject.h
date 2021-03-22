@@ -29,6 +29,7 @@ private:
 	ServerState nodeA;
 	ServerState nodeB;
 	int SM_Id;
+	int true_id;
 	unordered_map<int, VMObject *> childs;
 
 public:
@@ -53,6 +54,10 @@ public:
 	//删除虚拟机（会导致虚拟机的father为空）
 	bool RemoveChild(int vm_id);
 
+	string Gettype() { return SMProperty.GetModelType(); }
+
 	void SetId(int id) { this->SM_Id = id; }
+	void SetTrueId(int id){ this->true_id = id; }
+	int GetTrueId () { return true_id; }
 	int GetId() const { return SM_Id; }
 };
