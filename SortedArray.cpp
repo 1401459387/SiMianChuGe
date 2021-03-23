@@ -62,6 +62,7 @@ template<class T>
 void SortedArray<T>::Erase(int index)
 {
 	data->erase(data->begin() + index);
+	--size;
 }
 
 template<class T>
@@ -83,4 +84,5 @@ void SortedArray<T>::Erase(const T& elem)
 		}
 	}
 	if (data->at(target) == elem) data->erase(data->begin() + target);
+	--size;
 }
