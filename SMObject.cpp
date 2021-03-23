@@ -54,35 +54,137 @@ bool SMObject::AddChild(VMObject* child)
 	}
 	else
 	{
-		//TODO 决定放在哪个节点里
-		//先优先放在A节点中
-		if (nodeA.core < core || nodeA.memory < memory)
+		if (core > memory)
 		{
-			if (nodeB.core < core || nodeB.memory < memory)
+			if (nodeA.core > nodeB.core)
 			{
-				return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+				//先优先放在A节点中
+				if (nodeA.core < core || nodeA.memory < memory)
+				{
+					if (nodeB.core < core || nodeB.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+					else
+					{
+						nodeB.core -= core;
+						nodeB.memory -= memory;
+						child->SetNodeType(VM_NodeType::B);
+						childs[vm_id] = child;
+						if (child->father)
+							child->father->RemoveChild(child);
+						child->father = this;
+					}
+				}
+				else
+				{
+					nodeA.core -= core;
+					nodeA.memory -= memory;
+					child->SetNodeType(VM_NodeType::A);
+					childs[vm_id] = child;
+					if (child->father)
+						child->father->RemoveChild(child);
+					child->father = this;
+				}
 			}
 			else
 			{
-				nodeB.core -= core;
-				nodeB.memory -= memory;
-				child->SetNodeType(VM_NodeType::B);
-				childs[vm_id] = child;
-				if (child->father)
-					child->father->RemoveChild(child);
-				child->father = this;
+				//先优先放在B节点中
+				if (nodeB.core < core || nodeB.memory < memory)
+				{
+					if (nodeA.core < core || nodeA.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+					else
+					{
+						nodeA.core -= core;
+						nodeA.memory -= memory;
+						child->SetNodeType(VM_NodeType::A);
+						childs[vm_id] = child;
+						if (child->father)
+							child->father->RemoveChild(child);
+						child->father = this;
+					}
+				}
+				else
+				{
+					nodeB.core -= core;
+					nodeB.memory -= memory;
+					child->SetNodeType(VM_NodeType::B);
+					childs[vm_id] = child;
+					if (child->father)
+						child->father->RemoveChild(child);
+					child->father = this;
+				}
 			}
 		}
 		else
 		{
-			nodeA.core -= core;
-			nodeA.memory -= memory;
-			child->SetNodeType(VM_NodeType::A);
-			childs[vm_id] = child;
-			if (child->father)
-				child->father->RemoveChild(child);
-			child->father = this;
+			if (nodeA.memory > nodeB.memory)
+			{
+				//先优先放在A节点中
+				if (nodeA.core < core || nodeA.memory < memory)
+				{
+					if (nodeB.core < core || nodeB.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+					else
+					{
+						nodeB.core -= core;
+						nodeB.memory -= memory;
+						child->SetNodeType(VM_NodeType::B);
+						childs[vm_id] = child;
+						if (child->father)
+							child->father->RemoveChild(child);
+						child->father = this;
+					}
+				}
+				else
+				{
+					nodeA.core -= core;
+					nodeA.memory -= memory;
+					child->SetNodeType(VM_NodeType::A);
+					childs[vm_id] = child;
+					if (child->father)
+						child->father->RemoveChild(child);
+					child->father = this;
+				}
+			}
+			else
+			{
+				//先优先放在B节点中
+				if (nodeB.core < core || nodeB.memory < memory)
+				{
+					if (nodeA.core < core || nodeA.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+					else
+					{
+						nodeA.core -= core;
+						nodeA.memory -= memory;
+						child->SetNodeType(VM_NodeType::A);
+						childs[vm_id] = child;
+						if (child->father)
+							child->father->RemoveChild(child);
+						child->father = this;
+					}
+				}
+				else
+				{
+					nodeB.core -= core;
+					nodeB.memory -= memory;
+					child->SetNodeType(VM_NodeType::B);
+					childs[vm_id] = child;
+					if (child->father)
+						child->father->RemoveChild(child);
+					child->father = this;
+				}
+			}
 		}
+
 	}
 	return true;
 }

@@ -4,6 +4,16 @@
 
 using namespace std;
 
+//服务器分类标准
+constexpr auto SMstandrad = 2;
+
+enum class MachineType
+{
+	HighCore,
+	Balance,
+	HighMemory
+};
+
 //服务器
 class ServerMachine
 {
@@ -19,6 +29,7 @@ public:
 	int GetDailyCost() const { return dailyCost; }
 	int GetPurchased_id() const { return purchased_id; }
 	void SetPurchased_id(int id){purchased_id=id;}
+	MachineType GetMechType() const { return machineType; }
 	bool operator <(const ServerMachine &a)
 	{
 		return this->modelType<a.modelType;
@@ -33,4 +44,6 @@ private:
 	int dailyCost;	  //每日能耗成本
 
 	int purchased_id; //连接currentSM和purchased_Machines的id
+
+	MachineType machineType; //机器属性
 };

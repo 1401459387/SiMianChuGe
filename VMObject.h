@@ -24,13 +24,15 @@ enum class VM_NodeType
 class VMObject
 {
 private:
-	const VirtualMachine& VMProperty; //属性
+	const VirtualMachine VMProperty; //属性
 	int VM_ID;				   //虚拟机ID
 	VM_NodeType nodeType;	   //虚拟机节点类型
 	SMObject* father;		   //所寄存的服务器
 
 public:
 	friend class SMObject;
+
+	int index;		//在虚拟机列表中的下标
 	//构造函数（属性，VM号，宿主服务器）
 	VMObject(const VirtualMachine& _VMProperty, int _vm_id, SMObject* _father);
 

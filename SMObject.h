@@ -1,5 +1,6 @@
 #pragma once
 #include "VMObject.h"
+#include <algorithm>
 #include "ServerMachine.h"
 #include <unordered_map>
 
@@ -25,7 +26,7 @@ struct ServerState
 class SMObject
 {
 private:
-	const ServerMachine& SMProperty;
+	const ServerMachine SMProperty;
 	ServerState nodeA;
 	ServerState nodeB;
 	int SM_Id;
@@ -60,4 +61,31 @@ public:
 	void SetTrueId(int id){ this->true_id = id; }
 	int GetTrueId () { return true_id; }
 	int GetId() const { return SM_Id; }
+	const ServerMachine& GetProperty() const { return SMProperty; }
+
+	bool operator< (const SMObject& b)
+	{
+		MachineType type = SMProperty.GetMechType();
+		if (type == MachineType::HighCore)
+		{
+			if (nodeA.core == b.nodeA.core) return nodeB.core < b.nodeB.core;
+			return nodeA.core < b.nodeA.core;
+		}
+		else if (type == MachineType::HighMemory)
+		{
+			if (nodeA.memory == b.nodeA.memory) return nodeB.memory < b.nodeB.memory;
+			return nodeA.memory < b.nodeA.memory;
+		}
+		else
+		{
+			int max1 = min(nodeA.core, nodeA.memory);
+			int max2 = min(b.nodeA.core, b.nodeA.memory);
+			if (max1 == max2)
+			{
+				return min(nodeB.core, nodeB.memory) < min(b.nodeB.core, b.nodeB.memory);
+			}
+			return max1 < max2;
+
+		}
+	}
 };

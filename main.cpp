@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -18,17 +19,22 @@
 #include <stdlib.h>
 
 #endif 
+
 typedef long long ll;
 using namespace std;
 
 //服务器类型表
 unordered_map<string, ServerMachine> serverMachines;
+//三种不同类型的服务器(高核心/均衡/高内存)
+vector<ServerMachine> type_SMs[3];
 //虚拟机类型表
 unordered_map<string, VirtualMachine> virtualMachines;
 //当前购买了的服务器表
 unordered_map<int, SMObject*> currentSM;
 //当前配置了的虚拟机表
 unordered_map<int, VMObject*> currentVM;
+//当前虚拟机表的列表
+vector<VMObject*> currentVMList;
 //当前的请求队列
 vector<pair<int, string>> requestList;
 
@@ -44,7 +50,7 @@ int max_sm_id = 0;
 
 int id = 0;
 
-int rd() //生成随机数函数
+int rd(int mod) //生成随机数函数
 {
 #ifdef WIN32
     srand(time(0));
@@ -56,7 +62,7 @@ int rd() //生成随机数函数
     srand(tv.tv_sec * 1000 + tv.tv_usec / 1000);
 #endif 
     
-    return rand() % serverMachines.size();
+    return rand() % mod;
     
 }
 
@@ -78,7 +84,29 @@ void InitInput(ifstream* ifs)
         stringstream stm(catcher);
         stm >> _model;
         stm >> _core >> _mCp >> _hC >> _dC;
-        serverMachines[_model] = ServerMachine(_model, _core, _mCp, _hC, _dC);
+        auto& sm = serverMachines[_model] = ServerMachine(_model, _core, _mCp, _hC, _dC);
+        switch (sm.GetMechType())
+        {
+        case MachineType::HighCore:
+            type_SMs[0].push_back(sm);
+            break;
+        case MachineType::Balance:
+            type_SMs[1].push_back(sm);
+            break;
+        case MachineType::HighMemory:
+            type_SMs[2].push_back(sm);
+            break;
+        }
+    }
+
+    for (int i = 0; i <= 2; ++i)
+    {
+        sort(type_SMs[i].begin(), type_SMs[i].end(), [](const ServerMachine& a, const ServerMachine& b)
+            -> bool
+            {
+                if (a.GetDailyCost() == b.GetDailyCost()) return a.GetHardwareCost() < a.GetHardwareCost();
+                return a.GetDailyCost() < b.GetDailyCost();
+            });
     }
 
     *ifs >> N; //虚拟机数量
@@ -140,9 +168,37 @@ ServerMachine& ChooseServer(const VirtualMachine& vm_property)
     int vm_core = vm_property.GetCore();
     int vm_memory = vm_property.GetMemoryCapacity();
 
+    int type;
+    if (vm_core / vm_memory >= SMstandrad << 1)
+    {
+        type = 0;
+    }
+    else if (vm_memory / vm_core >= SMstandrad << 1)
+    {
+        type = 2;
+    }
+    else type = 1;
+
+    int maxsearch = type_SMs[type].size() >> 1;
+    //先在本类里寻找
+    while (maxsearch--)
+    {
+        int _rand = rd(type_SMs[type].size());
+        ServerMachine& serverMachine = type_SMs[type][_rand];
+        int sm_core = serverMachine.GetCore();
+        int sm_memory = serverMachine.GetMemoryCapacity();
+        if (!vm_property.IsTwoNode())
+        {
+            sm_core >>= 1;
+            sm_memory >>= 1;
+        }
+        if (vm_core <= sm_core && vm_memory <= sm_memory) return serverMachine;
+    }
+
+    //广撒网
     while (true)
     {
-        int _rand = rd();
+        int _rand = rd(serverMachines.size());
         auto iter = serverMachines.begin();
         while (--_rand && iter != serverMachines.end()) ++iter;
         if (iter == serverMachines.end()) iter = serverMachines.begin();
@@ -156,15 +212,6 @@ ServerMachine& ChooseServer(const VirtualMachine& vm_property)
         }
         if (vm_core <= sm_core && vm_memory <= sm_memory) return serverMachine;
     }
-    /*auto iter = serverMachines.begin();
-    for (; iter != serverMachines.end(); ++iter)
-    {
-        ServerMachine& serverMachine = iter->second;
-        int sm_core = serverMachine.GetCore();
-        int sm_memory = serverMachine.GetMemoryCapacity();
-        if (vm_core <= sm_core && vm_memory <= sm_memory) return serverMachine;
-    }
-    if (iter == serverMachines.end()) throw new exception("No server match!");*/
 }
 
 char GetStringFromNodeType(const VM_NodeType& nodeType)
@@ -177,6 +224,63 @@ char GetStringFromNodeType(const VM_NodeType& nodeType)
         return 'B';
     default:
         return ' ';
+    }
+}
+
+//从当前的虚拟机表中随机洗出数个元素
+void Shuffle(vector<VMObject*>& list,int num)
+{
+    unordered_set<int> hasChose;
+    int totalnum = currentVMList.size();
+    while (num)
+    {
+        int trand = rd(totalnum);
+        auto elem = currentVMList[trand];
+        if (hasChose.find(elem->GetID()) != hasChose.end())
+        {
+            continue;
+        }
+
+        list.push_back(elem);
+        hasChose.insert(elem->GetID());
+        --num;
+    }
+}
+
+void DailyMigration(int maxMigrationNum)
+{
+    if (!maxMigrationNum) return;
+    vector<VMObject*> list;
+    Shuffle(list, maxMigrationNum);
+    for (int i = 0; i < maxMigrationNum; ++i)
+    {
+        VMObject* cur = list[i];
+        const VirtualMachine& tproperty = cur->GetProperty();
+        MachineType type;
+        if (tproperty.GetCore() / tproperty.GetMemoryCapacity() >= SMstandrad << 2)
+        {
+            type = MachineType::HighCore;
+        }
+        else if (tproperty.GetMemoryCapacity() / tproperty.GetCore() >= SMstandrad << 2)
+        {
+            type = MachineType::HighMemory;
+        }
+        else
+        {
+            type = MachineType::Balance;
+        }
+
+        auto iter = currentSM.begin();
+        for (; iter != currentSM.end(); ++iter)
+        {
+            if (iter->second->GetProperty().GetMechType() == type)
+            {
+                if (iter->second->GetId()!=cur->GetFatherID() && iter->second->AddChild(cur))
+                {
+                    dailyMigration.push_back(tuple<int, int, VM_NodeType>(cur->GetID(), iter->second->GetTrueId(), cur->GetNodeType()));
+                }
+            }
+        }
     }
 }
 
@@ -245,6 +349,7 @@ int main()
     InitInput();
 
     int T;              //天数
+    int TotalT;         //总天数
     int R;              //每天的请求数
 
     string catcher;
@@ -253,8 +358,22 @@ int main()
     int _VM_id;
 
     cin >> T;
+    TotalT = T;
     while (T--)
     {
+        if (T == TotalT >> 1)
+        {
+            for (int i = 0; i <= 2; ++i)
+            {
+                sort(type_SMs[i].begin(), type_SMs[i].end(), [](const ServerMachine& a, const ServerMachine& b)
+                    -> bool
+                    {
+                        if (a.GetHardwareCost() == b.GetDailyCost()) return a.GetDailyCost() < b.GetDailyCost();
+                        return a.GetHardwareCost() < a.GetHardwareCost();
+                        
+                    });
+            }
+        }
         cin >> R;
         cin.get();
         //获取当日的创建申请
@@ -278,21 +397,31 @@ int main()
                 requestList.push_back({ _VM_id,"" });
             }
         }
-        //TODO 尝试迁移
+        //尝试迁移
+        int maxMigrateNum = currentVM.size() / 500;
+        DailyMigration(maxMigrateNum);
 
         //为请求队列寻找目标服务器/删除目标虚拟机
         for (auto iter = requestList.begin(); iter != requestList.end(); ++iter)
         {
             if (iter->second == "")
             {
-                currentVM[iter->first]->LeaveFather();
+                VMObject* vm = currentVM[iter->first];
+                vm->LeaveFather();
                 currentVM.erase(iter->first);
+                VMObject* theback = currentVMList.back();
+                currentVMList[vm->index] = theback;
+                theback->index = vm->index;
+                currentVMList.pop_back();
+                delete vm;
             }
             else
             {
-                VirtualMachine& vm_property = virtualMachines[iter->second];
+                VirtualMachine vm_property = virtualMachines[iter->second];
                 VMObject* vmObject = new VMObject(vm_property, iter->first, nullptr);
                 currentVM[iter->first] = vmObject;
+                vmObject->index = currentVMList.size();
+                currentVMList.push_back(vmObject); 
 
                 auto iter2 = currentSM.begin();
                 for (; iter2 != currentSM.end(); ++iter2)
