@@ -48,6 +48,8 @@ public:
 
 	//添加虚拟机并设置虚拟机的father为自己，如果虚拟机有父亲则其原父亲会删掉他
 	bool AddChild(VMObject* child);
+	//判断能否把目标虚拟机设置为自己的child
+	bool AbleToAddChild(VMObject* child);
 	
 	//删除虚拟机（会导致虚拟机的father为空）
 	bool RemoveChild(VMObject* child);
@@ -61,6 +63,10 @@ public:
 	void SetTrueId(int id){ this->true_id = id; }
 	int GetTrueId () { return true_id; }
 	int GetId() const { return SM_Id; }
+	int GetBMemo() const { return nodeB.memory; }
+	int GetAMemo() const { return nodeA.memory; }
+	int GetBCore() const { return nodeB.core; }
+	int GetACore() const { return nodeA.core; }
 	const ServerMachine& GetProperty() const { return SMProperty; }
 
 	bool operator< (const SMObject& b)
@@ -87,5 +93,51 @@ public:
 			return max1 < max2;
 
 		}
+	}
+
+	bool operator>(const SMObject& b)
+	{
+		MachineType type = SMProperty.GetMechType();
+		if (type == MachineType::HighCore)
+		{
+			if (nodeA.core == b.nodeA.core) return nodeB.core > b.nodeB.core;
+			return nodeA.core > b.nodeA.core;
+		}
+		else if (type == MachineType::HighMemory)
+		{
+			if (nodeA.memory == b.nodeA.memory) return nodeB.memory > b.nodeB.memory;
+			return nodeA.memory > b.nodeA.memory;
+		}
+		else
+		{
+			int max1 = min(nodeA.core, nodeA.memory);
+			int max2 = min(b.nodeA.core, b.nodeA.memory);
+			if (max1 == max2)
+			{
+				return min(nodeB.core, nodeB.memory) > min(b.nodeB.core, b.nodeB.memory);
+			}
+			return max1 > max2;
+
+		}
+	}
+
+	bool operator<=(const SMObject& b)
+	{
+		return !(*this > b);
+	}
+
+	bool operator>=(const SMObject& b)
+	{
+		return !(*this < b);
+	}
+
+	bool operator==(const SMObject& b)
+	{
+		return nodeA.core == b.nodeA.core && nodeB.core == b.nodeB.core;
+	}
+
+	bool operator!=(const SMObject& b)
+	{
+		return !(*this == b);
 	}
 };

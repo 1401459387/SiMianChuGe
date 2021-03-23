@@ -1,7 +1,12 @@
 #include "VMObject.h"
 
 int VMObject::GetFatherID() const 
-{ return father->true_id; }
+{ return father->SM_Id; }
+
+int VMObject::GetFatherTureID() const
+{
+	return father->true_id;
+}
 
 
 VMObject::VMObject(const VirtualMachine& _VMProperty, int _vm_id, SMObject* _father) : VMProperty(_VMProperty), VM_ID(_vm_id)

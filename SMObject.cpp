@@ -189,6 +189,81 @@ bool SMObject::AddChild(VMObject* child)
 	return true;
 }
 
+bool SMObject::AbleToAddChild(VMObject* child)
+{
+	if (child == nullptr)
+		return false;//throw exception("尝试往服务器中添加空指针");
+	const VirtualMachine& property = child->GetProperty();
+	int core = property.GetCore();
+	int memory = property.GetMemoryCapacity();
+	int vm_id = child->GetID();
+	if (property.IsTwoNode())
+	{
+		core >>= 1;
+		memory >>= 1;
+
+		if (nodeA.core < core || nodeA.memory < memory || nodeB.core < core || nodeB.memory < memory)
+		{
+			return false;
+		}
+	}
+	else
+	{
+		if (core > memory)
+		{
+			if (nodeA.core > nodeB.core)
+			{
+				//先优先放在A节点中
+				if (nodeA.core < core || nodeA.memory < memory)
+				{
+					if (nodeB.core < core || nodeB.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+				}
+			}
+			else
+			{
+				//先优先放在B节点中
+				if (nodeB.core < core || nodeB.memory < memory)
+				{
+					if (nodeA.core < core || nodeA.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+				}
+			}
+		}
+		else
+		{
+			if (nodeA.memory > nodeB.memory)
+			{
+				//先优先放在A节点中
+				if (nodeA.core < core || nodeA.memory < memory)
+				{
+					if (nodeB.core < core || nodeB.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+				}
+			}
+			else
+			{
+				//先优先放在B节点中
+				if (nodeB.core < core || nodeB.memory < memory)
+				{
+					if (nodeA.core < core || nodeA.memory < memory)
+					{
+						return false; //throw exception("服务器塞不下此虚拟机"); //都塞不下
+					}
+				}
+			}
+		}
+
+	}
+	return true;
+}
+
 bool SMObject::RemoveChild(VMObject* child)
 {
 	int vm_id = child->GetID();

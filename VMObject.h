@@ -54,4 +54,5 @@ public:
 	const VirtualMachine& GetProperty() const { return VMProperty; } //获取属性
 	int GetID() const { return VM_ID; }						  //获取VM_ID
 	int GetFatherID() const;
+	int GetFatherTureID() const;
 };
